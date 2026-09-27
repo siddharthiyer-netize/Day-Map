@@ -15,6 +15,7 @@ const demo = {
   goal: 330,
   reminders: true,
   customColors: null,
+  history: {},
   journal: [
     { date: "Sep 26, 2026", mood: "Grateful", text: "Life is so much fun when you young" },
     { date: "Sep 16, 2026", mood: "Grateful", text: "A quiet start helped me find more room for the things that matter." }
@@ -29,6 +30,8 @@ let data = JSON.parse(localStorage.getItem(KEY) || "null") || structuredClone(de
 let currentPage = "plan";
 let timerId = null;
 let filter = "All blocks";
+
+if (!data.history) data.history = {};
 
 function save() {
   localStorage.setItem(KEY, JSON.stringify(data));
@@ -61,6 +64,47 @@ function getGreeting() {
 function score() {
   const total = data.blocks.length || 1;
   return Math.round(data.blocks.filter((b) => b.done).length / total * 100);
+}
+
+function getDateKey(date = new Date()) {
+  return new Date(date).toISOString().split("T")[0];
+}
+
+function getLast7Days() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push({
+      key: getDateKey(d),
+      label: d.toLocaleDateString("en-US", { weekday: "short" }),
+      date: d
+    });
+  }
+  return days;
+}
+
+function parseScreenMinutes(value) {
+  if (!value) return 0;
+  const text = String(value).toLowerCase();
+  if (text.includes("screen-free")) return 0;
+  const match = text.match(/(\d+)\s*min/i);
+  if (match) return Number(match[1]);
+  return 0;
+}
+
+function syncTodayHistory() {
+  data.history = data.history || {};
+  const planned = data.blocks.reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
+  const done = data.blocks.filter(b => b.done).reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
+  const completedCount = data.blocks.filter(b => b.done).length;
+  const screenMinutes = data.blocks.reduce((sum, b) => sum + parseScreenMinutes(b.screen), 0);
+  data.history[getDateKey()] = {
+    planned,
+    done,
+    completedCount,
+    screenMinutes
+  };
 }
 
 function applyThemeColors() {
@@ -220,12 +264,14 @@ function toggleBlock(id) {
   const b = data.blocks.find((x) => x.id === id);
   if (!b) return;
   b.done = !b.done;
+  syncTodayHistory();
   save();
   render();
 }
 
 function deleteBlock(id) {
   data.blocks = data.blocks.filter((x) => x.id !== id);
+  syncTodayHistory();
   save();
   render();
 }
@@ -256,6 +302,7 @@ function addBlock() {
   };
 
   data.blocks.push(block);
+  syncTodayHistory();
   save();
   closeModal();
   render();
@@ -359,19 +406,40 @@ function resetTimer() {
 function completeFocus() {
   const b = data.blocks.find((x) => x.title === data.focusTask);
   if (b) b.done = true;
-
+  syncTodayHistory();
   resetTimer();
   save();
   render();
 }
 
 function renderInsights() {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const plannedSeries = [3, 4, 2, 5, 3, 4, 5];
-  const doneSeries = [2, 3, 2, 4, 2, 3, 0];
-  const screenSeries = [210, 240, 180, 300, 225, 250, 165];
+  const last7 = getLast7Days();
 
-  const bestDay = days[doneSeries.indexOf(Math.max(...doneSeries))];
+  const plannedSeries = last7.map(day => {
+    const entry = data.history?.[day.key];
+    return entry ? entry.planned : 0;
+  });
+
+  const doneSeries = last7.map(day => {
+    const entry = data.history?.[day.key];
+    return entry ? entry.done : 0;
+  });
+
+  const screenSeries = last7.map(day => {
+    const entry = data.history?.[day.key];
+    return entry ? entry.screenMinutes : 0;
+  });
+
+  const maxBar = Math.max(...plannedSeries, ...doneSeries, 1);
+  const maxScreen = Math.max(...screenSeries, 1);
+
+  const bestDay = last7.reduce((best, day) => {
+    const value = data.history?.[day.key]?.completedCount || 0;
+    if (!best || value > best.value) {
+      return { label: day.label, value };
+    }
+    return best;
+  }, null);
 
   document.getElementById("insights").innerHTML = `
     <div class="page-head">
@@ -394,7 +462,7 @@ function renderInsights() {
       </div>
 
       <div class="card metric hover-lift" title="Average number of tasks completed daily">
-        <b>${Math.floor(doneSeries.reduce((a, b) => a + b) / doneSeries.length)}</b>
+        <b>${Math.max(0, Math.round((doneSeries.reduce((a, b) => a + b, 0) / doneSeries.length) / 60))}</b>
         <span>avg daily done</span>
       </div>
     </div>
@@ -408,13 +476,20 @@ function renderInsights() {
 
         <div class="chart">
           <svg class="bar-svg" viewBox="0 0 400 200" preserveAspectRatio="none">
-            ${days.map((d, i) => `
-              <g>
-                <rect x="${i * 50 + 10}" y="${200 - doneSeries[i] * 30}" width="20" height="${doneSeries[i] * 30}" fill="var(--pink)" opacity="0.75"></rect>
-                <rect x="${i * 50 + 33}" y="${200 - plannedSeries[i] * 30}" width="20" height="${plannedSeries[i] * 30}" fill="var(--gold)" opacity="0.4"></rect>
-                <text x="${i * 50 + 20}" y="215" font-size="10" text-anchor="middle">${d}</text>
-              </g>
-            `).join("")}
+            ${last7.map((day, i) => {
+              const planned = plannedSeries[i] || 0;
+              const done = doneSeries[i] || 0;
+              const plannedHeight = (planned / maxBar) * 120;
+              const doneHeight = (done / maxBar) * 120;
+
+              return `
+                <g>
+                  <rect x="${i * 50 + 10}" y="${200 - doneHeight}" width="20" height="${doneHeight}" fill="var(--pink)" opacity="0.75"></rect>
+                  <rect x="${i * 50 + 33}" y="${200 - plannedHeight}" width="20" height="${plannedHeight}" fill="var(--gold)" opacity="0.4"></rect>
+                  <text x="${i * 50 + 20}" y="215" font-size="10" text-anchor="middle">${day.label}</text>
+                </g>
+              `;
+            }).join("")}
           </svg>
         </div>
       </div>
@@ -423,10 +498,11 @@ function renderInsights() {
         <div class="chart-title">Screen time <span style="float:right;color:var(--pink)">⌁</span></div>
         <div class="chart">
           <svg class="line-svg" viewBox="0 0 400 200" preserveAspectRatio="none">
-            ${screenSeries.map((s, i) => `
-              <circle cx="${i * 60 + 10}" cy="${200 - s / 2}" r="4" fill="var(--pink)" class="dot-animate" style="animation-delay:${i * 0.1}s"></circle>
-            `).join("")}
-            <polyline points="${screenSeries.map((s, i) => `${i * 60 + 10},${200 - s / 2}`).join(" ")}" stroke="var(--pink)" stroke-width="2" fill="none" opacity="0.3"></polyline>
+            ${screenSeries.map((s, i) => {
+              const y = 200 - ((s / maxScreen) * 140);
+              return `<circle cx="${i * 60 + 10}" cy="${y}" r="4" fill="var(--pink)" class="dot-animate" style="animation-delay:${i * 0.1}s"></circle>`;
+            }).join("")}
+            <polyline points="${screenSeries.map((s, i) => `${i * 60 + 10},${200 - ((s / maxScreen) * 140)}`).join(" ")}" stroke="var(--pink)" stroke-width="2" fill="none" opacity="0.3"></polyline>
           </svg>
         </div>
       </div>
@@ -437,18 +513,18 @@ function renderInsights() {
       <div class="reflection-grid">
         <div>
           <small>You kept</small>
-          <p><b>16 moments</b></p>
-          <small>of attention this week</small>
+          <p><b>${data.blocks.filter(b => b.done).length} tasks</b></p>
+          <small>done this week</small>
         </div>
         <div>
           <small>This week you moved</small>
-          <p><b>3.2 hours</b></p>
-          <small>more than last week</small>
+          <p><b>${Math.round(screenSeries.reduce((a, b) => a + b, 0) / 60)}h</b></p>
+          <small>of screen time</small>
         </div>
         <div>
           <small>Your best day was</small>
-          <p><b>${bestDay}</b></p>
-          <small>complete 4 blocks</small>
+          <p><b>${bestDay ? bestDay.label : "—"}</b></p>
+          <small>${bestDay ? `${bestDay.value} tasks` : "No data yet"}</small>
         </div>
       </div>
     </div>
@@ -635,6 +711,7 @@ function applyCustomTheme() {
 
 function restoreDemo() {
   data = structuredClone(demo);
+  syncTodayHistory();
   save();
   render();
 }
@@ -650,6 +727,7 @@ function clearAll() {
       reminders: data.reminders,
       customColors: data.customColors
     };
+    syncTodayHistory();
     save();
     render();
   }
@@ -659,5 +737,6 @@ function toggleView() {
   alert("Timeline view coming soon!");
 }
 
+syncTodayHistory();
 applyThemeColors();
 render();
