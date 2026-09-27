@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Day Map</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">✦</div>
+        <div>
+          <strong>The Day Map</strong>
+          <span>A gentle plan for today</span>
+        </div>
+        <span class="date-pill" id="datePill"></span>
+      </div>
+
+      <div class="side-label">YOUR RHYTHM</div>
+      <nav id="sideNav">
+        <button data-page="plan" class="active"><span>▣</span>Today's Plan</button>
+        <button data-page="focus"><span>◷</span>Focus Time</button>
+        <button data-page="insights"><span>▥</span>Insights & Analytics</button>
+        <button data-page="journal"><span>▤</span>Daily Journal</button>
+        <button data-page="settings"><span>⚙</span>Settings & Themes</button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="small-step">
+          <span>Small steps add up</span><b>♨</b>
+          <p>You completed <span id="sidebarDone">5</span> of <span id="sidebarTotal">6</span> blocks today. Keep the next step light.</p>
+        </div>
+        <button class="signout">↪ Sign out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="greeting">Good morning, Jude <span>/</span> Make space for what matters</div>
+          <div class="today-date">◷ <span id="fullDate"></span></div>
+        </div>
+        <div class="top-actions">
+          <span class="streak">♨ 5 day rhythm</span>
+          <span class="clock" id="clock"></span>
+          <button class="avatar">A</button>
+          <button class="add-square" id="quickAdd">+</button>
+        </div>
+      </header>
+
+      <section id="plan" class="page active"></section>
+      <section id="focus" class="page"></section>
+      <section id="insights" class="page"></section>
+      <section id="journal" class="page"></section>
+      <section id="settings" class="page"></section>
+
+      <nav class="bottom-nav">
+        <button data-page="plan" class="active">▣<span>Plan</span></button>
+        <button data-page="focus">◷<span>Focus</span></button>
+        <button data-page="insights">▥<span>Insights</span></button>
+        <button data-page="journal">▤<span>Daily</span></button>
+        <button data-page="settings">⚙<span>Settings</span></button>
+      </nav>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="blockModal">
+    <div class="modal-card">
+      <div class="modal-head"><h3>Add a block</h3><button onclick="closeModal()">×</button></div>
+      <label>Time <input id="blockTime" type="time" value="16:00"></label>
+      <label>Title <input id="blockTitle" placeholder="What matters next?"></label>
+      <label>Category
+        <select id="blockCategory">
+          <option>Deep Work</option><option>Health & Rest</option><option>Personal</option><option>Admin</option>
+        </select>
+      </label>
+      <label>Duration (minutes) <input id="blockDuration" type="number" value="45" min="5"></label>
+      <button class="primary full" onclick="addBlock()">Add block</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
