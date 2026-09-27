@@ -39,7 +39,7 @@
     <main class="main">
       <header class="topbar">
         <div>
-          <div class="greeting">Good morning, Jude <span>/</span> Make space for what matters</div>
+          <div class="greeting" id="greetingText">Good morning, Jude <span>/</span> Make space for what matters</div>
           <div class="today-date">◷ <span id="fullDate"></span></div>
         </div>
         <div class="top-actions">
@@ -68,15 +68,27 @@
 
   <div class="modal hidden" id="blockModal">
     <div class="modal-card">
-      <div class="modal-head"><h3>Add a block</h3><button onclick="closeModal()">×</button></div>
-      <label>Time <input id="blockTime" type="time" value="16:00"></label>
-      <label>Title <input id="blockTitle" placeholder="What matters next?"></label>
+      <div class="modal-head">
+        <h3>Add a block</h3>
+        <button onclick="closeModal()">×</button>
+      </div>
+      <label>Time
+        <input id="blockTime" type="time" value="16:00">
+      </label>
+      <label>Title
+        <input id="blockTitle" placeholder="What matters next?">
+      </label>
       <label>Category
         <select id="blockCategory">
-          <option>Deep Work</option><option>Health & Rest</option><option>Personal</option><option>Admin</option>
+          <option>Deep Work</option>
+          <option>Health & Rest</option>
+          <option>Personal</option>
+          <option>Admin</option>
         </select>
       </label>
-      <label>Duration (minutes) <input id="blockDuration" type="number" value="45" min="5"></label>
+      <label>Duration (minutes)
+        <input id="blockDuration" type="number" value="45" min="5">
+      </label>
       <button class="primary full" onclick="addBlock()">Add block</button>
     </div>
   </div>
