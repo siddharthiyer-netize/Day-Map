@@ -32,7 +32,13 @@
           <span>Small steps add up</span><b>♨</b>
           <p>You completed <span id="sidebarDone">5</span> of <span id="sidebarTotal">6</span> blocks today. Keep the next step light.</p>
         </div>
-        <button class="signout">↪ Sign out</button>
+
+        <div class="auth-box">
+          <button class="google-signin" id="googleSignIn">Continue with Google</button>
+          <div class="account-pill hidden" id="accountPill"></div>
+        </div>
+
+        <button class="signout" id="signOutBtn">↪ Sign out</button>
       </div>
     </aside>
 
@@ -45,7 +51,7 @@
         <div class="top-actions">
           <span class="streak">♨ 5 day rhythm</span>
           <span class="clock" id="clock"></span>
-          <button class="avatar">A</button>
+          <button class="avatar" id="avatarBtn">A</button>
           <button class="add-square" id="quickAdd">+</button>
         </div>
       </header>
